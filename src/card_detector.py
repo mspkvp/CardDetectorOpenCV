@@ -11,9 +11,26 @@ card_suits = ["clubs", "diamonds", "hearts", "spades"]
 card_images = dict()
 card_features = dict()
 
-MIN_MATCH_COUNT = 0
+MIN_MATCH_COUNT = 4
 # Initiate SIFT detector
-SIFT_DETECTOR = cv2.xfeatures2d.SIFT_create(0, 3, 0.04, 10, 1.6)
+SIFT_DETECTOR = cv2.xfeatures2d.SIFT_create()
+
+def compare_cards(card_ids):
+    winning_id = card_ids[0]
+    winning_card = winning_id.split("_")
+    for card_id in card_ids[1:]:
+        new_card = card_id.split("_")
+
+        n = card_values.index(new_card[0]) - card_values.index(winning_card[0]) #compares value
+
+        if(n == 0): #compares suits
+            n = card_values.index(new_card[2]) - card_values.index(winning_card[2])
+
+        if (n > 0):
+            winning_id = card_id
+            winning_card = new_card
+
+    return winning_id
 
 
 def load_cards():
@@ -22,11 +39,12 @@ def load_cards():
         for value in card_values:
             card_id = value + "_" + suit
             #check if we have the card trained
-            if(os.path.isfile("database/" + card_id + ".sift") and os.path.isfile("database/" + card_id + ".sift")):
+            if(os.path.isfile("database/" + card_id + ".sift")):
                 #load the image
                 card_images[card_id] = cv2.imread("database/" + card_id + ".png")
-                #load the features
-                card_features[card_id] = skp.unpickle_keypoints(pickle.load(open("database/" + card_id + ".sift")))
+                #calculate the features
+                gray = cv2.imread("database/" + card_id + ".png", 0)
+                card_features[card_id] = SIFT_DETECTOR.detectAndCompute(gray, None)
 
 
 def detect_card_in_image(acquired_image, acquired_image_kp, acquired_image_des, card_id):
@@ -41,8 +59,8 @@ def detect_card_in_image(acquired_image, acquired_image_kp, acquired_image_des, 
 
         #perform matching
         FLANN_INDEX_KDTREE = 0
-        index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
-        search_params = dict(checks = 50)
+        index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 10)
+        search_params = dict(checks = 100)
 
         flann = cv2.FlannBasedMatcher(index_params, search_params)
 
@@ -61,44 +79,51 @@ def detect_card_in_image(acquired_image, acquired_image_kp, acquired_image_des, 
 
             M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
             matchesMask = mask.ravel().tolist()
-
-            h,w = img1.shape
+            print(img1.shape)
+            h, w, a = img1.shape
             pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
             dst = cv2.perspectiveTransform(pts,M)
 
-            return 0, dst #return 0 for confirmation and contour of the card
+            return len(good), dst #return number of matches for confirmation and contour of the card
         else:
             return -1, None #card not found
     else:
         return -2, None #card not in database
 
 
+def detect_cards(image):
+    #grayscale the image
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    #detect features
+    kp, des = SIFT_DETECTOR.detectAndCompute(gray,None)
+    contours = []
+    detected_card_ids = []
+    for card_id in card_features.keys():
+        ret, contour = detect_card_in_image(image, kp, des, card_id)
+        
+        if ret > 0:
+            #card found
+            contours.append(contour)
+            detected_card_ids.append(card_id)
+            print "card found " + card_id
+
+    winning_card_id = compare_cards(detected_card_ids)
+
+    for i, c in enumerate(contours):
+        if winning_card_id == detected_card_ids[i]:
+            cv2.polylines(image,[np.int32(c)],True,(0,255,0),3, cv2.LINE_AA)
+        else:
+            cv2.polylines(image,[np.int32(c)],True,(0,0,255),3, cv2.LINE_AA)
+
+    cv2.imshow("final", image)
+    cv2.waitKey(0)
+
 #load the database
 load_cards()
 
 #read image from argument
 image = cv2.imread(sys.argv[1])
-#grayscale it
-gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-#blur it
-blur = cv2.GaussianBlur(gray, (5,5), 0)
-#detect features
-kp, des = SIFT_DETECTOR.detectAndCompute(blur,None)
 
-#this is is just to display the image
-tmp = cv2.imread(sys.argv[1])
-cv2.drawKeypoints(tmp, kp, tmp, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-cv2.imshow("features", tmp)
+detect_cards(image)
 
-ret, contour = detect_card_in_image(image, kp, des, sys.argv[2])
 
-if ret == 0:
-    #card found, display it with the contour
-    cv2.imshow("final", cv2.polylines(image,[np.int32(contour)],True,255,3, cv2.LINE_AA))
-    print "card found"
-    cv2.waitKey(0)
-elif ret == -1:
-    print "card not found"
-    cv2.waitKey(0)
-elif ret == -2:
-    print "card not in database"

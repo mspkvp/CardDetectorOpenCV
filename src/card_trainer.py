@@ -6,7 +6,7 @@ import store_keypoints as skp
 import cPickle as pickle
 #contours documentation: http://docs.opencv.org/master/dd/d49/tutorial_py_contour_features.html#gsc.tab=0
 
-SIFT_DETECTOR = cv2.xfeatures2d.SIFT_create(0, 3, 0.04, 10, 1.6)
+SIFT_DETECTOR = cv2.xfeatures2d.SIFT_create()
 #read the parameter image
 image = cv2.imread(sys.argv[1])
 
@@ -14,7 +14,7 @@ image = cv2.imread(sys.argv[1])
 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
 #apply a threshold to the grayscale version
-ret, threshold = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+ret, threshold = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 
 #obtain the contours
 #since we're supposing the card is in a well contrasted background with not many other objects
@@ -43,23 +43,22 @@ approx = np.array(approx, np.float32)
 
 #create a rectangle to which the contour will be transformed
 height = 400
-width = 400
+width = 300
 tl = [0,0]
-bl = [0,width - 1]
-br = [height - 1,width - 1]
-tr = [height - 1,0]
+bl = [0,height - 1]
+br = [width - 1,height - 1]
+tr = [width - 1,0]
 h = np.array([ tl, bl, br, tr ], np.float32)
 
 #determine the transformation and warp the original image
 transform = cv2.getPerspectiveTransform(approx, h)
-warp = cv2.warpPerspective(image, transform, (height,width))
+warp = cv2.warpPerspective(image, transform, (width,height))
 
 #determination of the feature points
 #grayscale and blur
 gray = cv2.cvtColor(warp, cv2.COLOR_BGR2GRAY)
-final = cv2.GaussianBlur(gray, (5,5), 0)
 #run SIFT
-keypoints, descriptors = SIFT_DETECTOR.detectAndCompute(final, None)
+keypoints, descriptors = SIFT_DETECTOR.detectAndCompute(gray, None)
 
 #save keypoints and descriptors in file
 pickle.dump(skp.pickle_keypoints(keypoints, descriptors), open("database/" + sys.argv[2] + ".sift", "wb+"))
@@ -67,7 +66,7 @@ pickle.dump(skp.pickle_keypoints(keypoints, descriptors), open("database/" + sys
 cv2.imwrite("database/" + sys.argv[2] + ".png", warp)
 
 #draw it with the key points
-warp = cv2.drawKeypoints(final, keypoints, warp, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+warp = cv2.drawKeypoints(gray, keypoints, warp, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 cv2.imshow("Training image", warp)
 
 cv2.waitKey(0)
