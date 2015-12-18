@@ -2,8 +2,6 @@ import cv2
 import sys
 import cv2.xfeatures2d
 import numpy as np
-import store_keypoints as skp
-import cPickle as pickle
 #contours documentation: http://docs.opencv.org/master/dd/d49/tutorial_py_contour_features.html#gsc.tab=0
 
 SIFT_DETECTOR = cv2.xfeatures2d.SIFT_create()
@@ -54,19 +52,9 @@ h = np.array([ tl, bl, br, tr ], np.float32)
 transform = cv2.getPerspectiveTransform(approx, h)
 warp = cv2.warpPerspective(image, transform, (width,height))
 
-#determination of the feature points
-#grayscale and blur
-gray = cv2.cvtColor(warp, cv2.COLOR_BGR2GRAY)
-#run SIFT
-keypoints, descriptors = SIFT_DETECTOR.detectAndCompute(gray, None)
-
-#save keypoints and descriptors in file
-pickle.dump(skp.pickle_keypoints(keypoints, descriptors), open("database/" + sys.argv[2] + ".sift", "wb+"))
 #save image
 cv2.imwrite("database/" + sys.argv[2] + ".png", warp)
 
-#draw it with the key points
-warp = cv2.drawKeypoints(gray, keypoints, warp, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 cv2.imshow("Training image", warp)
 
 cv2.waitKey(0)

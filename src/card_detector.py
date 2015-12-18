@@ -2,12 +2,10 @@ import cv2
 import cv2.xfeatures2d
 import numpy as np
 import sys
-import store_keypoints as skp
-import cPickle as pickle
 import os.path
 
 card_values = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "queen", "jack", "king", "ace"]
-card_suits = ["clubs", "diamonds", "hearts", "spades"]
+card_suits = ["clubs", "diamonds", "spades", "hearts"]
 card_images = dict()
 card_features = dict()
 
@@ -79,7 +77,7 @@ def detect_card_in_image(acquired_image, acquired_image_kp, acquired_image_des, 
 
             M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
             matchesMask = mask.ravel().tolist()
-            print(img1.shape)
+
             h, w, a = img1.shape
             pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
             dst = cv2.perspectiveTransform(pts,M)
@@ -107,13 +105,14 @@ def detect_cards(image):
             detected_card_ids.append(card_id)
             print "card found " + card_id
 
-    winning_card_id = compare_cards(detected_card_ids)
+    if len(detected_card_ids) > 0:
+        winning_card_id = compare_cards(detected_card_ids)
 
-    for i, c in enumerate(contours):
-        if winning_card_id == detected_card_ids[i]:
-            cv2.polylines(image,[np.int32(c)],True,(0,255,0),3, cv2.LINE_AA)
-        else:
-            cv2.polylines(image,[np.int32(c)],True,(0,0,255),3, cv2.LINE_AA)
+        for i, c in enumerate(contours):
+            if winning_card_id == detected_card_ids[i]:
+                cv2.polylines(image,[np.int32(c)],True,(0,255,0),3, cv2.LINE_AA)
+            else:
+                cv2.polylines(image,[np.int32(c)],True,(0,0,255),3, cv2.LINE_AA)
 
     cv2.imshow("final", image)
     cv2.waitKey(0)
