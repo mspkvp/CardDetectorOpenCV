@@ -1,29 +1,21 @@
 import numpy as np
 import cv2
+import time
 
 def check_image_difference(img1, img2):
-	diff_img = cv2.absdiff(img1, img2);
 
-    cv::Mat foregroundMask = cv::Mat::zeros(diffImage.rows, diffImage.cols, CV_8UC1);
+    diff = cv2.absdiff(last_frame, frame)
+    cv2.imshow("diff", diff)
+    return
 
-    float threshold = 30.0f;
-    float dist;
-
-    for(int j=0; j<diffImage.rows; ++j)
-        for(int i=0; i<diffImage.cols; ++i)
-        {
-            cv::Vec3b pix = diffImage.at<cv::Vec3b>(j,i);
-
-            dist = (pix[0]*pix[0] + pix[1]*pix[1] + pix[2]*pix[2]);
-            dist = sqrt(dist);
-
-            if(dist>threshold)
-            {
-                foregroundMask.at<unsigned char>(j,i) = 255;
-            }
-        }
 
 cap = cv2.VideoCapture(0)
+
+ret, last_frame = cap.read()
+ret, one_frame = cap.read()
+last_time = time.time()
+temp_diff = cv2.absdiff(last_frame, one_frame)
+last_diff = temp_diff.sum()
 
 while(True):
     # Capture frame-by-frame
@@ -37,6 +29,19 @@ while(True):
     cv2.imshow('frame',frame)
     cv2.imshow('gray',gray)
     cv2.imshow('threshold',threshold)
+    if (time.time()-last_time) > 5:
+        diff = cv2.absdiff(last_frame, frame)
+        diff_sum = diff.sum()
+
+        print min(last_diff,diff_sum)/float(max(last_diff, diff_sum))
+        
+        if min(last_diff,diff_sum)/float(max(last_diff, diff_sum)) > 0.50:
+            cv2.imshow("diff", diff)
+            last_diff = diff_sum
+
+        last_time = time.time()
+        last_frame = frame
+
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
