@@ -9,7 +9,7 @@ card_suits = ["clubs", "diamonds", "spades", "hearts"]
 card_images = dict()
 card_features = dict()
 
-MIN_MATCH_COUNT = 4
+MIN_MATCH_COUNT = 20
 fontFace = cv2.FONT_HERSHEY_PLAIN;
 fontScale = 2;
 thickness = 3;
@@ -45,7 +45,8 @@ def load_cards():
         for value in card_values:
             card_id = value + "_" + suit
             #check if we have the card trained
-            if(os.path.isfile("database/" + card_id + ".sift")):
+            if(os.path.isfile("database/" + card_id + ".png")):
+                print "Loading " + card_id
                 #load the image
                 card_images[card_id] = cv2.imread("database/" + card_id + ".png")
                 #calculate the features
@@ -78,6 +79,9 @@ def detect_card_in_image(acquired_image, acquired_image_kp, acquired_image_des, 
             if m.distance < 0.7 * n.distance:
                 good.append(m)
 
+
+        #print("Still alive")
+        #this comment avoids segmentation fault for some reason
         #homography calculation
         if len(good)>MIN_MATCH_COUNT:
             src_pts = np.float32([ kp1[m.queryIdx].pt for m in good ]).reshape(-1,1,2)
@@ -105,6 +109,7 @@ def detect_cards(image):
     contours = []
     detected_card_ids = []
     for card_id in card_features.keys():
+        print "Looking for " + card_id
         ret, contour = detect_card_in_image(image, kp, des, card_id)
         
         if ret > 0:
@@ -139,13 +144,5 @@ def detect_cards(image):
 
     cv2.imshow("final", image)
     cv2.waitKey(0)
-
-#load the database
-load_cards()
-
-#read image from argument
-image = cv2.imread(sys.argv[1])
-
-detect_cards(image)
 
 
