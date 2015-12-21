@@ -10,6 +10,14 @@ card_images = dict()
 card_features = dict()
 
 MIN_MATCH_COUNT = 4
+fontFace = cv2.FONT_HERSHEY_PLAIN;
+fontScale = 2;
+thickness = 3;
+winnerText = "WINNER"
+winnerTextSize = cv2.getTextSize(winnerText, fontFace, fontScale, thickness)[0]
+loserText = "LOSER"
+loserTextSize = cv2.getTextSize(winnerText, fontFace, fontScale, thickness)[0]
+
 # Initiate SIFT detector
 SIFT_DETECTOR = cv2.xfeatures2d.SIFT_create()
 
@@ -106,12 +114,27 @@ def detect_cards(image):
             print "card found " + card_id
 
     if len(detected_card_ids) > 0:
+        #check the winning card
         winning_card_id = compare_cards(detected_card_ids)
+        print winning_card_id + " wins"
 
         for i, c in enumerate(contours):
+
+            #determine the card contour's center http://docs.opencv.org/master/dd/d49/tutorial_py_contour_features.html#gsc.tab=0
+            M = cv2.moments(c)
+
+            cx = int(M['m10']/M['m00'])
+            cy = int(M['m01']/M['m00'])
+
             if winning_card_id == detected_card_ids[i]:
+                cx = cx - (winnerTextSize[0] / 2)
+                cy = cy - (winnerTextSize[1] / 2)
+                cv2.putText(image, "WINNER", (cx , cy), fontFace, fontScale, (0, 255, 0), thickness, 8);
                 cv2.polylines(image,[np.int32(c)],True,(0,255,0),3, cv2.LINE_AA)
             else:
+                cx = cx - (loserTextSize[0] / 2)
+                cy = cy - (loserTextSize[1] / 2)
+                cv2.putText(image, "LOSER", (cx, cy), fontFace, fontScale, (0, 0, 255), thickness, 8);
                 cv2.polylines(image,[np.int32(c)],True,(0,0,255),3, cv2.LINE_AA)
 
     cv2.imshow("final", image)
